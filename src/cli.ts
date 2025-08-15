@@ -111,6 +111,33 @@ server.tool(
   }
 )
 
+server.tool(
+  'get_user_posts',
+  '获取用户所有笔记',
+  {
+    profileUrl: z.string().describe('用户个人资料 URL'),
+    limit: z.number().optional().describe('返回结果数量限制（可选）')
+  },
+  async ({ profileUrl, limit }: { profileUrl: string; limit?: number }) => {
+    logger.info(`Getting posts from user profile: ${profileUrl}, limit: ${limit || 'all'}`)
+    try {
+      const tools = new RedNoteTools()
+      const notes = await tools.getUserPosts(profileUrl, limit)
+      logger.info(`Found ${notes.length} notes from user profile`)
+      
+      return {
+        content: notes.map((note) => ({
+          type: 'text',
+          text: `标题: ${note.title}\n作者: ${note.author}\n内容: ${note.content}\n点赞: ${note.likes || 0}\n收藏: ${note.collects || 0}\n评论: ${note.comments || 0}\n链接: ${note.url}\n---`
+        }))
+      }
+    } catch (error) {
+      logger.error('Error getting user posts:', error)
+      throw error
+    }
+  }
+)
+
 // Add login tool
 server.tool('login', '登录小红书账号', {}, async () => {
   logger.info('Starting login process')
