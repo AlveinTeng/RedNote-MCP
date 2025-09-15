@@ -138,6 +138,91 @@ server.tool(
   }
 )
 
+server.tool(
+  'get_first_user_post',
+  '获取用户第一个笔记',
+  {
+    profileUrl: z.string().describe('用户个人资料 URL')
+  },
+  async ({ profileUrl }: { profileUrl: string }) => {
+    logger.info(`Getting first post from user profile: ${profileUrl}`)
+    try {
+      const tools = new RedNoteTools()
+      const note = await tools.getFirstUserPost(profileUrl)
+      
+      if (!note) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '未找到用户的第一个笔记'
+            }
+          ]
+        }
+      }
+      
+      logger.info(`Successfully retrieved first note: ${note.title}`)
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `标题: ${note.title}\n作者: ${note.author}\n内容: ${note.content}\n点赞: ${note.likes || 0}\n收藏: ${note.collects || 0}\n评论: ${note.comments || 0}\n链接: ${note.url}`
+          }
+        ]
+      }
+    } catch (error) {
+      logger.error('Error getting first user post:', error)
+      throw error
+    }
+  }
+)
+
+server.tool(
+  'get_all_user_posts_advanced',
+  '使用高级方法获取用户所有笔记（绕过反爬虫）',
+  {
+    profileUrl: z.string().describe('用户个人资料 URL'),
+    limit: z.number().optional().describe('最大获取数量（可选）')
+  },
+  async ({ profileUrl, limit }: { profileUrl: string; limit?: number }) => {
+    logger.info(`Getting all posts from user profile using advanced method: ${profileUrl}`)
+    try {
+      const tools = new RedNoteTools()
+      const notes = await tools.getAllUserPostsAdvanced(profileUrl, limit)
+      
+      if (notes.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '未找到用户的笔记，可能原因：\n1. 用户没有公开笔记\n2. 笔记需要手机端查看\n3. 反爬虫机制阻止了访问'
+            }
+          ]
+        }
+      }
+      
+      logger.info(`Successfully retrieved ${notes.length} notes using advanced method`)
+      
+      const notesText = notes.map((note, index) => 
+        `--- 笔记 ${index + 1} ---\n标题: ${note.title}\n作者: ${note.author}\n内容: ${note.content.substring(0, 200)}${note.content.length > 200 ? '...' : ''}\n点赞: ${note.likes || 0}\n收藏: ${note.collects || 0}\n评论: ${note.comments || 0}\n链接: ${note.url}`
+      ).join('\n\n')
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `成功获取 ${notes.length} 条笔记：\n\n${notesText}`
+          }
+        ]
+      }
+    } catch (error) {
+      logger.error('Error getting all user posts with advanced method:', error)
+      throw error
+    }
+  }
+)
+
 // Add login tool
 server.tool('login', '登录小红书账号', {}, async () => {
   logger.info('Starting login process')
